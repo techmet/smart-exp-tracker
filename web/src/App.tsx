@@ -30,7 +30,7 @@ const isToday = (dateStr: string) => {
 export default function App() {
   // Navigation / Screen Views
   const [currentView, setCurrentView] = useState<'home' | 'duplicates'>('home');
-  const [activeNavTab, setActiveNavTab] = useState<'dashboard' | 'transactions'>('dashboard');
+  const [activeNavTab, setActiveNavTab] = useState<'dashboard' | 'investments' | 'transactions'>('dashboard');
 
   // DB & State
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -396,9 +396,9 @@ export default function App() {
               <h1 className="app-title">Smart Expense Tracker</h1>
               <p className="member-label">User: <span className="member-name-highlight">{memberName}</span></p>
             </div>
-             <button className="settings-btn" onClick={() => setIsSyncModalVisible(true)}>
-               ⚙️ Sync Config
-             </button>
+            <button className="settings-btn" onClick={() => setIsSyncModalVisible(true)}>
+              ⚙️ Sync Config
+            </button>
           </div>
 
           {activeNavTab === 'dashboard' ? (
@@ -427,23 +427,6 @@ export default function App() {
                 <div className="stat-card" style={{ minWidth: '90px' }}>
                   <p className="stat-title">Lifetime</p>
                   <h3 className="stat-value" style={{ fontSize: '18px' }}>₹{totalSpent.toFixed(2)}</h3>
-                </div>
-              </div>
-
-              {/* Investments Statistics Cards */}
-              <h4 className="section-title">Investments Ledger</h4>
-              <div className="stats-row" style={{ flexWrap: 'wrap' }}>
-                <div className="stat-card investments" style={{ minWidth: '90px' }}>
-                  <p className="stat-title">Today</p>
-                  <h3 className="stat-value" style={{ fontSize: '18px', color: '#10b981' }}>₹{todayInvestments.toFixed(2)}</h3>
-                </div>
-                <div className="stat-card investments" style={{ minWidth: '90px' }}>
-                  <p className="stat-title">This Month</p>
-                  <h3 className="stat-value" style={{ fontSize: '18px', color: '#10b981' }}>₹{currentMonthInvestments.toFixed(2)}</h3>
-                </div>
-                <div className="stat-card investments" style={{ minWidth: '90px' }}>
-                  <p className="stat-title">Lifetime</p>
-                  <h3 className="stat-value" style={{ fontSize: '18px', color: '#10b981' }}>₹{totalInvestments.toFixed(2)}</h3>
                 </div>
               </div>
 
@@ -481,8 +464,66 @@ export default function App() {
                 )}
               </div>
             </div>
+          ) : activeNavTab === 'investments' ? (
+            /* TAB 2: Investments View (Scrollable) */
+            <div className="scroll-content">
+              {/* Investments Statistics Cards */}
+              <h4 className="section-title">Investments Ledger</h4>
+              <div className="stats-row" style={{ flexWrap: 'wrap' }}>
+                <div className="stat-card investments" style={{ minWidth: '90px' }}>
+                  <p className="stat-title">Today</p>
+                  <h3 className="stat-value" style={{ fontSize: '18px', color: '#10b981' }}>₹{todayInvestments.toFixed(2)}</h3>
+                </div>
+                <div className="stat-card investments" style={{ minWidth: '90px' }}>
+                  <p className="stat-title">This Month</p>
+                  <h3 className="stat-value" style={{ fontSize: '18px', color: '#10b981' }}>₹{currentMonthInvestments.toFixed(2)}</h3>
+                </div>
+                <div className="stat-card investments" style={{ minWidth: '90px' }}>
+                  <p className="stat-title">Lifetime</p>
+                  <h3 className="stat-value" style={{ fontSize: '18px', color: '#10b981' }}>₹{totalInvestments.toFixed(2)}</h3>
+                </div>
+              </div>
+
+              {/* Feed of Investment Logs */}
+              <h4 className="section-title" style={{ marginTop: '20px' }}>Investments Feed</h4>
+              {expenses.filter(x => x.category === 'Investments').length === 0 ? (
+                <div className="empty-view">
+                  <span className="empty-text">No investment logs.</span>
+                </div>
+              ) : (
+                expenses.filter(x => x.category === 'Investments').map((item) => (
+                  <div key={item.id} className="transaction-card">
+                    <div className="transaction-row">
+                      <div>
+                        <h5 className="transaction-desc">{item.description}</h5>
+                        <p className="transaction-meta">
+                          {item.subCategory ? `${item.category} › ${item.subCategory}` : item.category} •{' '}
+                          {new Date(item.date).toLocaleDateString()}
+                        </p>
+                        <p className="auditor-tag">
+                          Logged by: {item.createdBy} ({item.paymentMode})
+                        </p>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span className="transaction-amount investment">
+                          +₹{item.amount.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="card-actions">
+                      <button className="card-btn edit" onClick={() => handleEditPress(item)}>
+                        ✏️ Edit
+                      </button>
+                      <button className="card-btn delete" onClick={() => handleDeletePress(item.id)}>
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           ) : (
-            /* TAB 2: Transactions View (Sticky filters, scrollable list) */
+            /* TAB 3: Transactions View (Sticky filters, scrollable list) */
             <div className="fixed-content">
               <h4 className="section-title" style={{ marginBottom: 12 }}>Filter Transactions</h4>
 
@@ -605,6 +646,13 @@ export default function App() {
             >
               <span className="nav-tab-icon">📊</span>
               <span>Dashboard</span>
+            </button>
+            <button
+              className={`nav-tab-btn ${activeNavTab === 'investments' ? 'active' : ''}`}
+              onClick={() => setActiveNavTab('investments')}
+            >
+              <span className="nav-tab-icon">📈</span>
+              <span>Investments</span>
             </button>
             <button
               className={`nav-tab-btn ${activeNavTab === 'transactions' ? 'active' : ''}`}
