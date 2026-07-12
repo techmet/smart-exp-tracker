@@ -635,15 +635,15 @@ export default function App() {
               <div className="stats-row">
                 <div className="stat-card">
                   <p className="stat-title">Today</p>
-                  <h3 className="stat-value" style={{ fontSize: '18px' }}>₹{todaySpent.toFixed(2)}</h3>
+                  <h3 className="stat-value" style={{ fontSize: '18px' }}>₹{Math.round(todaySpent)}</h3>
                 </div>
                 <div className="stat-card">
                   <p className="stat-title">Month</p>
-                  <h3 className="stat-value" style={{ fontSize: '18px' }}>₹{currentMonthSpent.toFixed(2)}</h3>
+                  <h3 className="stat-value" style={{ fontSize: '18px' }}>₹{Math.round(currentMonthSpent)}</h3>
                 </div>
                 <div className="stat-card">
                   <p className="stat-title">Lifetime</p>
-                  <h3 className="stat-value" style={{ fontSize: '18px' }}>₹{totalSpent.toFixed(2)}</h3>
+                  <h3 className="stat-value" style={{ fontSize: '18px' }}>₹{Math.round(totalSpent)}</h3>
                 </div>
               </div>
 
@@ -689,15 +689,15 @@ export default function App() {
               <div className="stats-row">
                 <div className="stat-card investments">
                   <p className="stat-title">Today</p>
-                  <h3 className="stat-value" style={{ fontSize: '18px', color: '#10b981' }}>₹{todayInvestments.toFixed(2)}</h3>
+                  <h3 className="stat-value" style={{ fontSize: '18px', color: '#10b981' }}>₹{Math.round(todayInvestments)}</h3>
                 </div>
                 <div className="stat-card investments">
                   <p className="stat-title">Month</p>
-                  <h3 className="stat-value" style={{ fontSize: '18px', color: '#10b981' }}>₹{currentMonthInvestments.toFixed(2)}</h3>
+                  <h3 className="stat-value" style={{ fontSize: '18px', color: '#10b981' }}>₹{Math.round(currentMonthInvestments)}</h3>
                 </div>
                 <div className="stat-card investments">
                   <p className="stat-title">Lifetime</p>
-                  <h3 className="stat-value" style={{ fontSize: '18px', color: '#10b981' }}>₹{totalInvestments.toFixed(2)}</h3>
+                  <h3 className="stat-value" style={{ fontSize: '18px', color: '#10b981' }}>₹{Math.round(totalInvestments)}</h3>
                 </div>
               </div>
 
