@@ -788,7 +788,7 @@ export default function App() {
                     <input
                       type="date"
                       className="filter-select"
-                      style={{ padding: '6px 10px', fontSize: '11px' }}
+                      style={{ fontSize: '11px' }}
                       value={filterStartDate}
                       onChange={(e) => {
                         setFilterStartDate(e.target.value);
@@ -801,7 +801,7 @@ export default function App() {
                     <input
                       type="date"
                       className="filter-select"
-                      style={{ padding: '6px 10px', fontSize: '11px' }}
+                      style={{ fontSize: '11px' }}
                       value={filterEndDate}
                       onChange={(e) => {
                         setFilterEndDate(e.target.value);
