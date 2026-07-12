@@ -8,6 +8,13 @@ import {
 } from './db/indexedDb';
 import type { Expense } from './db/indexedDb';
 import { exportSyncFile, importSyncFile } from './sync/webSync';
+import {
+  getSupabaseConfig,
+  saveSupabaseConfig,
+  clearSupabaseConfig,
+  testSupabaseConnection,
+  syncWithSupabase,
+} from './sync/supabaseSync';
 import { calculateExpenseHash, findPotentialDuplicates } from './services/duplicateDetector';
 import type { DuplicateGroup } from './services/duplicateDetector';
 
@@ -70,12 +77,34 @@ export default function App() {
   // Hidden File input ref for upload syncing
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Supabase Connection Settings States
+  const [supabaseUrlInput, setSupabaseUrlInput] = useState('');
+  const [supabaseAnonKeyInput, setSupabaseAnonKeyInput] = useState('');
+  const [showSupabaseSetup, setShowSupabaseSetup] = useState(() => getSupabaseConfig() === null);
+  const [supabaseSyncStatus, setSupabaseSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
+  const [supabaseSyncMessage, setSupabaseSyncMessage] = useState('');
+
+  // Load pre-configured details on mount
+  useEffect(() => {
+    const config = getSupabaseConfig();
+    if (config) {
+      setSupabaseUrlInput(config.url);
+      setSupabaseAnonKeyInput(config.anonKey);
+    }
+  }, []);
+
   // Initialize DB and load logs
   useEffect(() => {
     const start = async () => {
       try {
         await initDb();
         await refreshExpenses();
+        
+        // Trigger automated sync on launch if credentials exist
+        const config = getSupabaseConfig();
+        if (config) {
+          triggerSupabaseSync(true);
+        }
       } catch (err) {
         alert('Failed to initialize local IndexedDB database.');
       }
@@ -101,6 +130,53 @@ export default function App() {
       setDuplicateGroups(groups);
     } catch (e) {
       console.error('Failed to load logs:', e);
+    }
+  };
+
+  // Perform background sync with Supabase
+  const triggerSupabaseSync = async (silent = false) => {
+    const config = getSupabaseConfig();
+    if (!config) return;
+
+    setSupabaseSyncStatus('syncing');
+    try {
+      const freshList = await getActiveExpenses();
+      const res = await syncWithSupabase(freshList);
+      if (res.success) {
+        setSupabaseSyncStatus('success');
+        setSupabaseSyncMessage(res.message);
+        await refreshExpenses();
+      } else {
+        setSupabaseSyncStatus('error');
+        setSupabaseSyncMessage(res.message);
+        if (!silent) {
+          alert(`Sync error: ${res.message}`);
+        }
+      }
+    } catch (e) {
+      setSupabaseSyncStatus('error');
+      setSupabaseSyncMessage('Network connection error.');
+    }
+  };
+
+  // Setup connection action
+  const handleConnectSupabase = async () => {
+    if (!supabaseUrlInput.trim() || !supabaseAnonKeyInput.trim()) {
+      alert('Please enter both your Supabase URL and Anon Key.');
+      return;
+    }
+
+    setIsSyncing(true);
+    const test = await testSupabaseConnection(supabaseUrlInput, supabaseAnonKeyInput);
+    setIsSyncing(false);
+
+    if (test.success) {
+      saveSupabaseConfig(supabaseUrlInput, supabaseAnonKeyInput);
+      setShowSupabaseSetup(false);
+      alert('Connected successfully! Supabase Cloud Sync is now active.');
+      await triggerSupabaseSync(false);
+    } else {
+      alert(`Connection failed: ${test.message}`);
     }
   };
 
@@ -164,6 +240,8 @@ export default function App() {
         setIsAddModalVisible(false);
         resetForm();
         await refreshExpenses();
+        // Background sync
+        triggerSupabaseSync(true);
       } catch (err) {
         alert('Failed to update transaction.');
       }
@@ -192,6 +270,8 @@ export default function App() {
         setIsAddModalVisible(false);
         resetForm();
         await refreshExpenses();
+        // Background sync
+        triggerSupabaseSync(true);
       } catch (err) {
         alert('Failed to log expense. A duplicate entry might exist.');
       }
@@ -215,6 +295,8 @@ export default function App() {
       try {
         await deleteExpense(id);
         await refreshExpenses();
+        // Background sync
+        triggerSupabaseSync(true);
       } catch (err) {
         alert('Failed to delete transaction.');
       }
@@ -246,6 +328,8 @@ export default function App() {
     if (res.success) {
       await refreshExpenses();
       alert(res.message);
+      // Upload local merges
+      triggerSupabaseSync(true);
     } else {
       alert(res.message);
     }
@@ -269,6 +353,8 @@ export default function App() {
       setDuplicateGroups(updated);
       
       await refreshExpenses();
+      // Background sync
+      triggerSupabaseSync(true);
     } catch (e) {
       alert('Failed to complete transaction merge.');
     }
@@ -377,6 +463,113 @@ export default function App() {
     });
   }, [expenses, filterMonth, filterCategory]);
 
+  // If Supabase Credentials setup screen is active
+  if (showSupabaseSetup) {
+    return (
+      <div className="app-container" style={{ justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: '20px' }}>
+        <div className="modal-content" style={{ maxWidth: '500px', width: '100%', position: 'static', transform: 'none' }}>
+          <h2 className="modal-title" style={{ textAlign: 'center', marginBottom: '8px' }}>☁️ Supabase Cloud Sync</h2>
+          <p style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center', marginBottom: '20px' }}>
+            Configure your free Supabase database to enable automatic real-time sync with your family.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <label className="input-label">Supabase Project URL</label>
+              <input
+                type="text"
+                className="form-input"
+                style={{ marginBottom: 0 }}
+                placeholder="https://your-project.supabase.co"
+                value={supabaseUrlInput}
+                onChange={(e) => setSupabaseUrlInput(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="input-label">API Key (Anon Public)</label>
+              <input
+                type="password"
+                className="form-input"
+                style={{ marginBottom: 0 }}
+                placeholder="eyJhbGciOi..."
+                value={supabaseAnonKeyInput}
+                onChange={(e) => setSupabaseAnonKeyInput(e.target.value)}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              <button
+                type="button"
+                className="modal-action-btn submit"
+                style={{ flex: 1 }}
+                onClick={handleConnectSupabase}
+                disabled={isSyncing}
+              >
+                {isSyncing ? 'Connecting...' : 'Connect Database'}
+              </button>
+              <button
+                type="button"
+                className="modal-action-btn cancel"
+                style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', color: '#cbd5e1' }}
+                onClick={() => setShowSupabaseSetup(false)}
+              >
+                Use Offline Mode
+              </button>
+            </div>
+
+            <div className="divider" style={{ margin: '15px 0' }} />
+
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#f8fafc' }}>Database Table Setup Required:</h4>
+            <p style={{ margin: '0 0 10px 0', fontSize: '11px', color: '#94a3b8', lineHeight: '1.4' }}>
+              Create a table named <strong>expenses</strong> in your Supabase SQL Editor. Copy and run the query below:
+            </p>
+            
+            <textarea
+              className="form-input"
+              readOnly
+              style={{
+                fontFamily: 'monospace',
+                fontSize: '10px',
+                height: '110px',
+                background: '#090d16',
+                color: '#10b981',
+                padding: '8px',
+                resize: 'none',
+              }}
+              value={`create table expenses (
+  id text primary key,
+  amount double precision not null,
+  currency text not null,
+  date text not null,
+  category text not null,
+  "subCategory" text,
+  description text not null,
+  "paymentMode" text not null,
+  "createdBy" text not null,
+  "createdAt" text not null,
+  "updatedAt" text not null,
+  "isDeleted" integer not null,
+  "externalSourceId" text,
+  hash text not null
+);
+
+alter table expenses disable row level security;`}
+              onClick={(e) => {
+                (e.target as HTMLTextAreaElement).select();
+                navigator.clipboard.writeText((e.target as HTMLTextAreaElement).value);
+                alert('SQL script copied to clipboard!');
+              }}
+            />
+            <p style={{ margin: 0, fontSize: '10px', color: '#10b981', textAlign: 'right', cursor: 'pointer' }}>
+              📋 Click code to copy
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
       {/* Hidden input for picking family backup file */}
@@ -394,7 +587,24 @@ export default function App() {
           <div className="top-bar">
             <div>
               <h1 className="app-title">Smart Expense Tracker</h1>
-              <p className="member-label">User: <span className="member-name-highlight">{memberName}</span></p>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <p className="member-label" style={{ margin: 0 }}>
+                  User: <span className="member-name-highlight">{memberName}</span>
+                </p>
+                <span 
+                  style={{
+                    fontSize: '9px',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    background: supabaseSyncStatus === 'success' ? 'rgba(16, 185, 129, 0.1)' : supabaseSyncStatus === 'syncing' ? 'rgba(56, 189, 248, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    color: supabaseSyncStatus === 'success' ? '#10b981' : supabaseSyncStatus === 'syncing' ? '#38bdf8' : '#f87171',
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                  }}
+                  title={supabaseSyncMessage}
+                >
+                  {supabaseSyncStatus === 'success' ? '☁️ Synced' : supabaseSyncStatus === 'syncing' ? '🔄 Syncing' : '⚠️ Offline'}
+                </span>
+              </div>
             </div>
             <button className="settings-btn" onClick={() => setIsSyncModalVisible(true)}>
               ⚙️ Sync Config
@@ -860,12 +1070,83 @@ export default function App() {
 
             <div className="divider" />
 
-            {/* Option A: Create a Family */}
-            <h4 style={{ margin: '0 0 4px 0', fontSize: 13, fontWeight: 700 }}>
-              Option A: Create a New Family Ledger
+            {/* Supabase Cloud Sync Section */}
+            <h4 style={{ margin: '0 0 4px 0', fontSize: 13, fontWeight: 700, color: '#38bdf8' }}>
+              ☁️ Supabase Cloud Sync Settings
             </h4>
             <p style={{ margin: '0 0 10px 0', fontSize: 11, color: '#94a3b8' }}>
-              Export your current local database as a family master sync file. Save it in Google Drive.
+              Sync status: <strong>{supabaseSyncStatus === 'success' ? '✅ Connected & Synced' : supabaseSyncStatus === 'syncing' ? '🔄 Syncing...' : supabaseSyncStatus === 'error' ? '⚠️ Sync Failed' : '⚠️ Offline Mode'}</strong>
+            </p>
+            {supabaseSyncMessage && (
+              <p style={{ margin: '0 0 10px 0', fontSize: 10, color: supabaseSyncStatus === 'success' ? '#10b981' : '#f87171' }}>
+                {supabaseSyncMessage}
+              </p>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: 12 }}>
+              <input
+                type="text"
+                className="form-input"
+                style={{ marginBottom: 0 }}
+                placeholder="Supabase Project URL"
+                value={supabaseUrlInput}
+                onChange={(e) => setSupabaseUrlInput(e.target.value)}
+              />
+              <input
+                type="password"
+                className="form-input"
+                style={{ marginBottom: 0 }}
+                placeholder="Anon API Key"
+                value={supabaseAnonKeyInput}
+                onChange={(e) => setSupabaseAnonKeyInput(e.target.value)}
+              />
+              
+              <div style={{ display: 'flex', gap: '8px', marginTop: 4 }}>
+                <button
+                  type="button"
+                  className="settings-btn"
+                  style={{ flex: 1, backgroundColor: '#38bdf8', color: '#020617', borderColor: '#38bdf8' }}
+                  onClick={handleConnectSupabase}
+                  disabled={isSyncing}
+                >
+                  Save & Connect
+                </button>
+                <button
+                  type="button"
+                  className="settings-btn"
+                  style={{ flex: 1, backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderColor: '#ef4444' }}
+                  onClick={() => {
+                    clearSupabaseConfig();
+                    setSupabaseUrlInput('');
+                    setSupabaseAnonKeyInput('');
+                    setSupabaseSyncStatus('idle');
+                    setSupabaseSyncMessage('');
+                    alert('Supabase credentials cleared.');
+                  }}
+                >
+                  Disconnect
+                </button>
+              </div>
+              
+              <button
+                type="button"
+                className="settings-btn"
+                style={{ width: '100%' }}
+                onClick={() => triggerSupabaseSync(false)}
+                disabled={isSyncing || getSupabaseConfig() === null}
+              >
+                🔄 Force Sync Now
+              </button>
+            </div>
+
+            <div className="divider" />
+
+            {/* Manual Backups Fallback */}
+            <h4 style={{ margin: '0 0 4px 0', fontSize: 13, fontWeight: 700 }}>
+              Backup Option A: Export Local Backup
+            </h4>
+            <p style={{ margin: '0 0 10px 0', fontSize: 11, color: '#94a3b8' }}>
+              Export your current local database as a family master sync JSON file.
             </p>
             <button
               className="modal-action-btn submit"
@@ -873,15 +1154,14 @@ export default function App() {
               disabled={isSyncing}
               onClick={handleExportBackup}
             >
-              {isSyncing ? 'Exporting...' : '✨ Create & Share Family Ledger'}
+              {isSyncing ? 'Exporting...' : '✨ Export Local Backup JSON'}
             </button>
 
-            {/* Option B: Import / Join Shared Family */}
             <h4 style={{ margin: '0 0 4px 0', fontSize: 13, fontWeight: 700 }}>
-              Option B: Import / Join Shared Family
+              Backup Option B: Import Shared Backup
             </h4>
             <p style={{ margin: '0 0 10px 0', fontSize: 11, color: '#94a3b8' }}>
-              Select the family ledger file shared with you by another family member on Google Drive.
+              Select a family ledger sync JSON file to merge manually.
             </p>
             <button
               className="modal-action-btn"
@@ -889,30 +1169,17 @@ export default function App() {
                 width: '100%',
                 backgroundColor: '#6366f1',
                 color: '#f8fafc',
-                marginBottom: 16,
+                marginBottom: 8,
               }}
               disabled={isSyncing}
               onClick={() => fileInputRef.current?.click()}
             >
-              {isSyncing ? 'Syncing...' : '🔗 Import & Use Shared Ledger'}
+              {isSyncing ? 'Syncing...' : '🔗 Import & Merge Backup JSON'}
             </button>
-
-            <div className="divider" />
-            <h4 style={{ margin: '0 0 6px 0', fontSize: 12, fontWeight: 700, color: '#f8fafc' }}>
-              Quick Setup Guide:
-            </h4>
-            <div className="guideline-box">
-              <p className="guideline-text">
-                • **Owner** shares the sync file natively in the Google Drive App with other family accounts.
-              </p>
-              <p className="guideline-text">
-                • **Members** navigate to their Google Drive in the file picker to select and import the ledger.
-              </p>
-            </div>
 
             <button
               className="modal-action-btn cancel"
-              style={{ width: '100%', marginTop: 8 }}
+              style={{ width: '100%', marginTop: 16 }}
               onClick={() => setIsSyncModalVisible(false)}
             >
               Close Settings
