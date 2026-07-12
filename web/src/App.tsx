@@ -631,18 +631,17 @@ export default function App() {
                 </div>
               )}
 
-              {/* Spent Statistics Cards */}
               <h4 className="section-title">Spent Ledger</h4>
-              <div className="stats-row" style={{ flexWrap: 'wrap' }}>
-                <div className="stat-card" style={{ minWidth: '90px' }}>
+              <div className="stats-row">
+                <div className="stat-card">
                   <p className="stat-title">Today</p>
                   <h3 className="stat-value" style={{ fontSize: '18px' }}>₹{todaySpent.toFixed(2)}</h3>
                 </div>
-                <div className="stat-card" style={{ minWidth: '90px' }}>
+                <div className="stat-card">
                   <p className="stat-title">This Month</p>
                   <h3 className="stat-value" style={{ fontSize: '18px' }}>₹{currentMonthSpent.toFixed(2)}</h3>
                 </div>
-                <div className="stat-card" style={{ minWidth: '90px' }}>
+                <div className="stat-card">
                   <p className="stat-title">Lifetime</p>
                   <h3 className="stat-value" style={{ fontSize: '18px' }}>₹{totalSpent.toFixed(2)}</h3>
                 </div>
@@ -687,16 +686,16 @@ export default function App() {
             <div className="scroll-content">
               {/* Investments Statistics Cards */}
               <h4 className="section-title">Investments Ledger</h4>
-              <div className="stats-row" style={{ flexWrap: 'wrap' }}>
-                <div className="stat-card investments" style={{ minWidth: '90px' }}>
+              <div className="stats-row">
+                <div className="stat-card investments">
                   <p className="stat-title">Today</p>
                   <h3 className="stat-value" style={{ fontSize: '18px', color: '#10b981' }}>₹{todayInvestments.toFixed(2)}</h3>
                 </div>
-                <div className="stat-card investments" style={{ minWidth: '90px' }}>
+                <div className="stat-card investments">
                   <p className="stat-title">This Month</p>
                   <h3 className="stat-value" style={{ fontSize: '18px', color: '#10b981' }}>₹{currentMonthInvestments.toFixed(2)}</h3>
                 </div>
-                <div className="stat-card investments" style={{ minWidth: '90px' }}>
+                <div className="stat-card investments">
                   <p className="stat-title">Lifetime</p>
                   <h3 className="stat-value" style={{ fontSize: '18px', color: '#10b981' }}>₹{totalInvestments.toFixed(2)}</h3>
                 </div>
@@ -906,7 +905,7 @@ export default function App() {
           <button
             className="fab"
             onClick={() => setIsAddModalVisible(true)}
-            style={{ bottom: '84px', right: '24px', zIndex: 15 }}
+             style={{ bottom: 'calc(84px + env(safe-area-inset-bottom))', right: '24px', zIndex: 15 }}
           >
             +
           </button>
