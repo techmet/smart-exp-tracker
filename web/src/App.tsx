@@ -450,10 +450,12 @@ export default function App() {
       }
     });
 
-    return Object.keys(map).map((key) => ({
-      name: key,
-      value: map[key],
-    }));
+    return Object.keys(map)
+      .map((key) => ({
+        name: key,
+        value: map[key],
+      }))
+      .sort((a, b) => b.value - a.value);
   }, [expenses]);
 
   // Memoized list of months represented in the database (chronological desc)
