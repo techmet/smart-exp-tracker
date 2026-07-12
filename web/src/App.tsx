@@ -692,7 +692,7 @@ export default function App() {
                   <h3 className="stat-value" style={{ fontSize: '18px', color: '#10b981' }}>₹{todayInvestments.toFixed(2)}</h3>
                 </div>
                 <div className="stat-card investments">
-                  <p className="stat-title">This Month</p>
+                  <p className="stat-title">Month</p>
                   <h3 className="stat-value" style={{ fontSize: '18px', color: '#10b981' }}>₹{currentMonthInvestments.toFixed(2)}</h3>
                 </div>
                 <div className="stat-card investments">
