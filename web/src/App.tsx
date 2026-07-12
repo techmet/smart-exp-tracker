@@ -504,6 +504,11 @@ export default function App() {
       return true;
     });
   }, [expenses, filterMonth, filterCategory, filterStartDate, filterEndDate]);
+ 
+  // Memoized total of filtered expenses
+  const filteredTotal = useMemo(() => {
+    return filteredExpenses.reduce((sum, item) => sum + item.amount, 0);
+  }, [filteredExpenses]);
 
   // If Supabase Credentials setup screen is active
   if (showSupabaseSetup) {
@@ -807,7 +812,9 @@ export default function App() {
 
               {/* Feed Logs Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <h4 className="section-title" style={{ margin: 0 }}>Results ({filteredExpenses.length})</h4>
+                 <h4 className="section-title" style={{ margin: 0 }}>
+                   Results ({filteredExpenses.length}) • Total: <span style={{ color: '#38bdf8' }}>₹{filteredTotal.toFixed(2)}</span>
+                 </h4>
                 {(filterMonth !== 'All' || filterCategory !== 'All' || filterStartDate || filterEndDate) && (
                   <button
                     className="settings-btn"
