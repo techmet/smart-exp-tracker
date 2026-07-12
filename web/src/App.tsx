@@ -90,6 +90,7 @@ export default function App() {
   const [filterCategory, setFilterCategory] = useState<string>('All');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
+  const [filterPaymentMode, setFilterPaymentMode] = useState('All');
 
   // Duplicate Resolution State
   const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([]);
@@ -503,9 +504,14 @@ export default function App() {
       if (filterCategory !== 'All') {
         if (item.category !== filterCategory) return false;
       }
+
+      // Payment Mode filtering
+      if (filterPaymentMode !== 'All') {
+        if (item.paymentMode !== filterPaymentMode) return false;
+      }
       return true;
     });
-  }, [expenses, filterMonth, filterCategory, filterStartDate, filterEndDate]);
+  }, [expenses, filterMonth, filterCategory, filterStartDate, filterEndDate, filterPaymentMode]);
  
   // Memoized total of filtered expenses
   const filteredTotal = useMemo(() => {
@@ -779,6 +785,23 @@ export default function App() {
                       ))}
                     </select>
                   </div>
+
+                  {/* Payment Mode Picker dropdown */}
+                  <div className="filter-select-wrapper">
+                    <span className="input-label" style={{ fontSize: 10, marginBottom: 4 }}>Mode</span>
+                    <select
+                      className="filter-select"
+                      value={filterPaymentMode}
+                      onChange={(e) => setFilterPaymentMode(e.target.value)}
+                    >
+                      <option value="All">All Modes</option>
+                      {['Cash', 'Credit Card', 'Debit Card', 'UPI / Bank Transfer'].map((m) => (
+                        <option key={m} value={m}>
+                          {m}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 {/* Date range filter row */}
@@ -817,7 +840,7 @@ export default function App() {
                  <h4 className="section-title" style={{ margin: 0 }}>
                    Results ({filteredExpenses.length}) • Total: <span style={{ color: '#38bdf8' }}>₹{filteredTotal.toFixed(2)}</span>
                  </h4>
-                {(filterMonth !== 'All' || filterCategory !== 'All' || filterStartDate || filterEndDate) && (
+                {(filterMonth !== 'All' || filterCategory !== 'All' || filterStartDate || filterEndDate || filterPaymentMode !== 'All') && (
                   <button
                     className="settings-btn"
                     style={{ padding: '4px 8px', fontSize: 11 }}
@@ -826,6 +849,7 @@ export default function App() {
                       setFilterCategory('All');
                       setFilterStartDate('');
                       setFilterEndDate('');
+                      setFilterPaymentMode('All');
                     }}
                   >
                     Clear Filters
