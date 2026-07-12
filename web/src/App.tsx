@@ -34,6 +34,23 @@ const isToday = (dateStr: string) => {
          d.getDate() === now.getDate();
 };
 
+// Helper to get current YYYY-MM format
+const getCurrentMonthStr = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+};
+
+// Helper to get current YYYY-MM-DD format for date input defaults
+const getTodayInputStr = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function App() {
   // Navigation / Screen Views
   const [currentView, setCurrentView] = useState<'home' | 'duplicates'>('home');
@@ -59,6 +76,7 @@ export default function App() {
   const [formCategory, setFormCategory] = useState('Groceries');
   const [formSubCategory, setFormSubCategory] = useState('');
   const [formPaymentMode, setFormPaymentMode] = useState('Cash');
+  const [formDate, setFormDate] = useState(() => getTodayInputStr());
 
   // Dynamic categories list
   const [categories, setCategories] = useState<string[]>(() => {
@@ -67,9 +85,11 @@ export default function App() {
   });
   const [newCategoryName, setNewCategoryName] = useState('');
 
-  // Transactions Tab Filtering
-  const [filterMonth, setFilterMonth] = useState<string>('All');
+  // Transactions Tab Filtering (defaults to Current Month)
+  const [filterMonth, setFilterMonth] = useState<string>(() => getCurrentMonthStr());
   const [filterCategory, setFilterCategory] = useState<string>('All');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
 
   // Duplicate Resolution State
   const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([]);
@@ -211,6 +231,7 @@ export default function App() {
     setFormCategory('Groceries');
     setFormSubCategory('');
     setFormPaymentMode('Cash');
+    setFormDate(getTodayInputStr());
     setEditingExpenseId(null);
   };
 
@@ -225,13 +246,19 @@ export default function App() {
       alert('Please enter a merchant / description.');
       return;
     }
+    if (!formDate) {
+      alert('Please select a transaction date.');
+      return;
+    }
 
     const amount = parseFloat(formAmount);
+    const selectedDateISO = new Date(`${formDate}T12:00:00`).toISOString();
 
     if (editingExpenseId) {
       try {
         await updateExpense(editingExpenseId, {
           amount,
+          date: selectedDateISO,
           category: formCategory,
           subCategory: formCategory === 'Investments' ? formSubCategory || 'Stocks' : undefined,
           description: formDescription.trim(),
@@ -246,21 +273,21 @@ export default function App() {
         alert('Failed to update transaction.');
       }
     } else {
-      const date = new Date().toISOString();
-      const hash = calculateExpenseHash(amount, date, formDescription);
+      const dateNowStr = new Date().toISOString();
+      const hash = calculateExpenseHash(amount, selectedDateISO, formDescription);
 
       const newExpense: Expense = {
         id: `manual_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
         amount,
         currency: 'INR',
-        date,
+        date: selectedDateISO,
         category: formCategory,
         subCategory: formCategory === 'Investments' ? formSubCategory || 'Stocks' : undefined,
         description: formDescription.trim(),
         paymentMode: formPaymentMode,
         createdBy: memberName,
-        createdAt: date,
-        updatedAt: date,
+        createdAt: dateNowStr,
+        updatedAt: dateNowStr,
         isDeleted: 0,
         hash,
       };
@@ -286,6 +313,7 @@ export default function App() {
     setFormCategory(item.category);
     setFormSubCategory(item.subCategory || '');
     setFormPaymentMode(item.paymentMode);
+    setFormDate(item.date.substring(0, 10)); // Extract YYYY-MM-DD
     setIsAddModalVisible(true);
   };
 
@@ -448,20 +476,35 @@ export default function App() {
     return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   };
 
-  // Filtered expenses logs feed based on active selects
+  // Filtered expenses logs feed based on active selects & date ranges
   const filteredExpenses = useMemo(() => {
     return expenses.filter((item) => {
-      if (filterMonth !== 'All') {
-        const d = new Date(item.date);
-        const itemYearMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        if (itemYearMonth !== filterMonth) return false;
+      const itemDate = item.date.substring(0, 10); // YYYY-MM-DD
+      
+      // Date range filtering
+      if (filterStartDate) {
+        if (itemDate < filterStartDate) return false;
       }
+      if (filterEndDate) {
+        if (itemDate > filterEndDate) return false;
+      }
+
+      // Fallback to month selector only if date range is unset
+      if (!filterStartDate && !filterEndDate) {
+        if (filterMonth !== 'All') {
+          const d = new Date(item.date);
+          const itemYearMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          if (itemYearMonth !== filterMonth) return false;
+        }
+      }
+
+      // Category filtering
       if (filterCategory !== 'All') {
         if (item.category !== filterCategory) return false;
       }
       return true;
     });
-  }, [expenses, filterMonth, filterCategory]);
+  }, [expenses, filterMonth, filterCategory, filterStartDate, filterEndDate]);
 
   // If Supabase Credentials setup screen is active
   if (showSupabaseSetup) {
@@ -738,15 +781,19 @@ alter table expenses disable row level security;`}
               <h4 className="section-title" style={{ marginBottom: 12 }}>Filter Transactions</h4>
 
               {/* Filter Controls Card */}
-              <div className="filter-card">
-                <div className="filter-select-group">
+              <div className="filter-card" style={{ padding: '12px' }}>
+                <div className="filter-select-group" style={{ marginBottom: '8px' }}>
                   {/* Month Picker dropdown */}
                   <div className="filter-select-wrapper">
                     <span className="input-label" style={{ fontSize: 10, marginBottom: 4 }}>Month</span>
                     <select
                       className="filter-select"
                       value={filterMonth}
-                      onChange={(e) => setFilterMonth(e.target.value)}
+                      onChange={(e) => {
+                        setFilterMonth(e.target.value);
+                        setFilterStartDate('');
+                        setFilterEndDate('');
+                      }}
                     >
                       <option value="All">All Months</option>
                       {uniqueMonths.map((m) => (
@@ -774,18 +821,50 @@ alter table expenses disable row level security;`}
                     </select>
                   </div>
                 </div>
+
+                {/* Date range filter row */}
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <div className="filter-select-wrapper" style={{ flex: 1 }}>
+                    <span className="input-label" style={{ fontSize: 10, marginBottom: 4 }}>Start Date</span>
+                    <input
+                      type="date"
+                      className="filter-select"
+                      style={{ padding: '6px 10px', fontSize: '11px' }}
+                      value={filterStartDate}
+                      onChange={(e) => {
+                        setFilterStartDate(e.target.value);
+                        if (e.target.value) setFilterMonth('All');
+                      }}
+                    />
+                  </div>
+                  <div className="filter-select-wrapper" style={{ flex: 1 }}>
+                    <span className="input-label" style={{ fontSize: 10, marginBottom: 4 }}>End Date</span>
+                    <input
+                      type="date"
+                      className="filter-select"
+                      style={{ padding: '6px 10px', fontSize: '11px' }}
+                      value={filterEndDate}
+                      onChange={(e) => {
+                        setFilterEndDate(e.target.value);
+                        if (e.target.value) setFilterMonth('All');
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Feed Logs Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <h4 className="section-title" style={{ margin: 0 }}>Results ({filteredExpenses.length})</h4>
-                {(filterMonth !== 'All' || filterCategory !== 'All') && (
+                {(filterMonth !== 'All' || filterCategory !== 'All' || filterStartDate || filterEndDate) && (
                   <button
                     className="settings-btn"
                     style={{ padding: '4px 8px', fontSize: 11 }}
                     onClick={() => {
                       setFilterMonth('All');
                       setFilterCategory('All');
+                      setFilterStartDate('');
+                      setFilterEndDate('');
                     }}
                   >
                     Clear Filters
@@ -968,6 +1047,15 @@ alter table expenses disable row level security;`}
               required
               value={formDescription}
               onChange={(e) => setFormDescription(e.target.value)}
+            />
+
+            <label className="input-label">Transaction Date</label>
+            <input
+              type="date"
+              className="form-input"
+              required
+              value={formDate}
+              onChange={(e) => setFormDate(e.target.value)}
             />
 
             <label className="input-label">Category</label>

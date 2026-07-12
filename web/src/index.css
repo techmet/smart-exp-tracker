@@ -44,7 +44,8 @@ body {
 .app-container {
   width: 100vw;
   max-width: 480px; /* iPhone Pro Max width */
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
   background: rgba(15, 23, 42, 0.85); /* Slate 900 */
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   display: flex;
@@ -52,7 +53,7 @@ body {
   border-left: 1px solid rgba(255, 255, 255, 0.05);
   border-right: 1px solid rgba(255, 255, 255, 0.05);
   position: relative;
-  padding-bottom: 80px; /* space for absolute floating action button */
+  overflow: hidden;
   box-sizing: border-box;
 }
 
@@ -106,8 +107,9 @@ body {
 /* Scroll Content */
 .scroll-content {
   flex: 1;
-  padding: 20px;
+  padding: 20px 20px 90px 20px;
   overflow-y: auto;
+  box-sizing: border-box;
 }
 
 /* Range Selector Tabs */
