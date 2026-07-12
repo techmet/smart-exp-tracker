@@ -512,7 +512,7 @@ export default function App() {
       return true;
     });
   }, [expenses, filterMonth, filterCategory, filterStartDate, filterEndDate, filterPaymentMode]);
- 
+
   // Memoized total of filtered expenses
   const filteredTotal = useMemo(() => {
     return filteredExpenses.reduce((sum, item) => sum + item.amount, 0);
@@ -638,7 +638,7 @@ export default function App() {
                   <h3 className="stat-value" style={{ fontSize: '18px' }}>₹{todaySpent.toFixed(2)}</h3>
                 </div>
                 <div className="stat-card">
-                  <p className="stat-title">This Month</p>
+                  <p className="stat-title">Month</p>
                   <h3 className="stat-value" style={{ fontSize: '18px' }}>₹{currentMonthSpent.toFixed(2)}</h3>
                 </div>
                 <div className="stat-card">
@@ -836,9 +836,9 @@ export default function App() {
 
               {/* Feed Logs Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                 <h4 className="section-title" style={{ margin: 0 }}>
-                   Results ({filteredExpenses.length}) • Total: <span style={{ color: '#38bdf8' }}>₹{filteredTotal.toFixed(2)}</span>
-                 </h4>
+                <h4 className="section-title" style={{ margin: 0 }}>
+                  Results ({filteredExpenses.length}) • Total: <span style={{ color: '#38bdf8' }}>₹{filteredTotal.toFixed(2)}</span>
+                </h4>
                 {(filterMonth !== 'All' || filterCategory !== 'All' || filterStartDate || filterEndDate || filterPaymentMode !== 'All') && (
                   <button
                     className="settings-btn"
@@ -905,7 +905,7 @@ export default function App() {
           <button
             className="fab"
             onClick={() => setIsAddModalVisible(true)}
-             style={{ bottom: 'calc(84px + env(safe-area-inset-bottom))', right: '24px', zIndex: 15 }}
+            style={{ bottom: 'calc(84px + env(safe-area-inset-bottom))', right: '24px', zIndex: 15 }}
           >
             +
           </button>
