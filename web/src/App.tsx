@@ -30,8 +30,8 @@ const isToday = (dateStr: string) => {
   const d = new Date(dateStr);
   const now = new Date();
   return d.getFullYear() === now.getFullYear() &&
-         d.getMonth() === now.getMonth() &&
-         d.getDate() === now.getDate();
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
 };
 
 // Helper to get current YYYY-MM format
@@ -119,7 +119,7 @@ export default function App() {
       try {
         await initDb();
         await refreshExpenses();
-        
+
         // Trigger automated sync on launch if credentials exist
         const config = getSupabaseConfig();
         if (config) {
@@ -160,8 +160,7 @@ export default function App() {
 
     setSupabaseSyncStatus('syncing');
     try {
-      const freshList = await getActiveExpenses();
-      const res = await syncWithSupabase(freshList);
+      const res = await syncWithSupabase();
       if (res.success) {
         setSupabaseSyncStatus('success');
         setSupabaseSyncMessage(res.message);
@@ -209,14 +208,14 @@ export default function App() {
   const handleAddCategory = () => {
     const name = newCategoryName.trim();
     if (!name) return;
-    
+
     const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
-    
+
     if (categories.includes(capitalized)) {
       alert('This category already exists.');
       return;
     }
-    
+
     const updated = [...categories, capitalized];
     setCategories(updated);
     localStorage.setItem('family_categories', JSON.stringify(updated));
@@ -349,7 +348,7 @@ export default function App() {
     setIsSyncing(true);
     const res = await importSyncFile(fileList[0]);
     setIsSyncing(false);
-    
+
     // Clear selection
     e.target.value = '';
 
@@ -374,12 +373,12 @@ export default function App() {
         await deleteExpense(disc.id);
       }
       alert('Transactions merged successfully.');
-      
+
       // Update local groups
       const updated = [...duplicateGroups];
       updated.splice(groupIndex, 1);
       setDuplicateGroups(updated);
-      
+
       await refreshExpenses();
       // Background sync
       triggerSupabaseSync(true);
@@ -480,7 +479,7 @@ export default function App() {
   const filteredExpenses = useMemo(() => {
     return expenses.filter((item) => {
       const itemDate = item.date.substring(0, 10); // YYYY-MM-DD
-      
+
       // Date range filtering
       if (filterStartDate) {
         if (itemDate < filterStartDate) return false;
@@ -560,53 +559,6 @@ export default function App() {
                 Use Offline Mode
               </button>
             </div>
-
-            <div className="divider" style={{ margin: '15px 0' }} />
-
-            <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#f8fafc' }}>Database Table Setup Required:</h4>
-            <p style={{ margin: '0 0 10px 0', fontSize: '11px', color: '#94a3b8', lineHeight: '1.4' }}>
-              Create a table named <strong>expenses</strong> in your Supabase SQL Editor. Copy and run the query below:
-            </p>
-            
-            <textarea
-              className="form-input"
-              readOnly
-              style={{
-                fontFamily: 'monospace',
-                fontSize: '10px',
-                height: '110px',
-                background: '#090d16',
-                color: '#10b981',
-                padding: '8px',
-                resize: 'none',
-              }}
-              value={`create table expenses (
-  id text primary key,
-  amount double precision not null,
-  currency text not null,
-  date text not null,
-  category text not null,
-  "subCategory" text,
-  description text not null,
-  "paymentMode" text not null,
-  "createdBy" text not null,
-  "createdAt" text not null,
-  "updatedAt" text not null,
-  "isDeleted" integer not null,
-  "externalSourceId" text,
-  hash text not null
-);
-
-alter table expenses disable row level security;`}
-              onClick={(e) => {
-                (e.target as HTMLTextAreaElement).select();
-                navigator.clipboard.writeText((e.target as HTMLTextAreaElement).value);
-                alert('SQL script copied to clipboard!');
-              }}
-            />
-            <p style={{ margin: 0, fontSize: '10px', color: '#10b981', textAlign: 'right', cursor: 'pointer' }}>
-              📋 Click code to copy
-            </p>
           </div>
         </div>
       </div>
@@ -634,7 +586,7 @@ alter table expenses disable row level security;`}
                 <p className="member-label" style={{ margin: 0 }}>
                   User: <span className="member-name-highlight">{memberName}</span>
                 </p>
-                <span 
+                <span
                   style={{
                     fontSize: '9px',
                     padding: '2px 6px',
@@ -895,9 +847,8 @@ alter table expenses disable row level security;`}
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <span
-                            className={`transaction-amount ${
-                              item.category === 'Investments' ? 'investment' : ''
-                            }`}
+                            className={`transaction-amount ${item.category === 'Investments' ? 'investment' : ''
+                              }`}
                           >
                             {item.category === 'Investments' ? '+' : '-'}₹{item.amount.toFixed(2)}
                           </span>
@@ -918,16 +869,16 @@ alter table expenses disable row level security;`}
             </div>
           )}
 
-           {/* Floating Action Button visible on all tabs on top of content */}
-           <button
-             className="fab"
-             onClick={() => setIsAddModalVisible(true)}
-             style={{ bottom: '84px', right: '24px', zIndex: 15 }}
-           >
-             +
-           </button>
+          {/* Floating Action Button visible on all tabs on top of content */}
+          <button
+            className="fab"
+            onClick={() => setIsAddModalVisible(true)}
+            style={{ bottom: '84px', right: '24px', zIndex: 15 }}
+          >
+            +
+          </button>
 
-           {/* Navigation Bottom Bar */}
+          {/* Navigation Bottom Bar */}
           <div className="bottom-nav">
             <button
               className={`nav-tab-btn ${activeNavTab === 'dashboard' ? 'active' : ''}`}
@@ -1188,7 +1139,7 @@ alter table expenses disable row level security;`}
                 value={supabaseAnonKeyInput}
                 onChange={(e) => setSupabaseAnonKeyInput(e.target.value)}
               />
-              
+
               <div style={{ display: 'flex', gap: '8px', marginTop: 4 }}>
                 <button
                   type="button"
@@ -1215,7 +1166,7 @@ alter table expenses disable row level security;`}
                   Disconnect
                 </button>
               </div>
-              
+
               <button
                 type="button"
                 className="settings-btn"

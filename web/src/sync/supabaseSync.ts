@@ -1,5 +1,5 @@
 import type { Expense } from '../db/indexedDb';
-import { addExpense, updateExpense } from '../db/indexedDb';
+import { getAllExpensesForSync, syncUpsertExpenses } from '../db/indexedDb';
 
 export interface SupabaseConfig {
   url: string;
@@ -80,7 +80,7 @@ export async function testSupabaseConnection(url: string, anonKey: string): Prom
 }
 
 // Sync Local IndexedDB with Supabase Database
-export async function syncWithSupabase(localExpenses: Expense[]): Promise<{
+export async function syncWithSupabase(): Promise<{
   success: boolean;
   message: string;
   addedLocally: number;
@@ -104,6 +104,9 @@ export async function syncWithSupabase(localExpenses: Expense[]): Promise<{
   const { url, anonKey } = config;
 
   try {
+    // Fetch ALL local records (including soft-deleted ones)
+    const localExpenses = await getAllExpensesForSync();
+
     // 1. Fetch remote expenses
     const endpoint = `${url}/rest/v1/expenses`;
     const response = await fetch(endpoint, {
@@ -167,14 +170,10 @@ export async function syncWithSupabase(localExpenses: Expense[]): Promise<{
       }
     }
 
-    // Write all required local updates to IndexedDB
-    for (const exp of localUpdatesToSave) {
-      const localExp = localMap.get(exp.id);
-      if (!localExp) {
-        await addExpense(exp);
-      } else {
-        await updateExpense(exp.id, exp);
-      }
+    // Write all required local updates to IndexedDB using syncUpsertExpenses
+    // which handles inserts & updates via objectStore.put without corrupting updatedAt timestamps
+    if (localUpdatesToSave.length > 0) {
+      await syncUpsertExpenses(localUpdatesToSave);
     }
 
     // 2. Upload any local updates back to Supabase
